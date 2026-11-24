@@ -4,6 +4,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
+COLLECTION_NAME = "meeting_transcript"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 
 
@@ -29,13 +30,21 @@ def build_vector_store(transcript: str) -> Chroma:
     ]
 
     embeddings = get_embeddings()
-    # In-memory ephemeral store with a unique collection name per run (no readonly SQLite disk issues)
     vector_store = Chroma.from_documents(
         documents=docs,
         embedding=embeddings,
-        collection_name=f"transcript_{uuid.uuid4().hex}"
+        collection_name=f"{COLLECTION_NAME}_{uuid.uuid4().hex}"
     )
 
+    return vector_store
+
+
+def load_vector_store() -> Chroma:
+    embeddings = get_embeddings()
+    vector_store = Chroma(
+        collection_name=COLLECTION_NAME,
+        embedding_function=embeddings
+    )
     return vector_store
 
 
