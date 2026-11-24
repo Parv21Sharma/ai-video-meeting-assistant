@@ -5,7 +5,7 @@ from core.rag_engine import ask_question
 
 # Page configuration
 st.set_page_config(
-    page_title="AI Video & Meeting Assistant",
+    page_title="AI Audio Assistant",
     page_icon="🎙️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -21,37 +21,23 @@ if "processed_source" not in st.session_state:
 
 # --- SIDEBAR: INPUT & SETTINGS ---
 with st.sidebar:
-    st.title("🎙️ Video Assistant")
+    st.title("🎙️ Audio Assistant")
     st.caption("Powered by Whisper, Gemini & ChromaDB")
     st.divider()
-
-    input_type = st.radio(
-        "Select Input Source",
-        options=["YouTube URL", "Upload Audio / Video File"],
-        horizontal=False
-    )
 
     source_path = None
     uploaded_temp_path = None
 
-    if input_type == "YouTube URL":
-        url_input = st.text_input(
-            "YouTube Link",
-            placeholder="https://www.youtube.com/watch?v=..."
-        )
-        if url_input.strip():
-            source_path = url_input.strip()
-    else:
-        uploaded_file = st.file_uploader(
-            "Upload Media File",
-            type=["mp4", "mp3", "wav", "m4a", "mkv", "webm"]
-        )
-        if uploaded_file is not None:
-            os.makedirs("downloades", exist_ok=True)
-            uploaded_temp_path = os.path.join("downloades", uploaded_file.name)
-            with open(uploaded_temp_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            source_path = uploaded_temp_path
+    uploaded_file = st.file_uploader(
+        "Upload Audio File",
+        type=["mp4", "mp3", "wav", "m4a", "mkv", "webm"]
+    )
+    if uploaded_file is not None:
+        os.makedirs("downloades", exist_ok=True)
+        uploaded_temp_path = os.path.join("downloades", uploaded_file.name)
+        with open(uploaded_temp_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        source_path = uploaded_temp_path
 
     language = st.selectbox(
         "Spoken Language",
@@ -61,7 +47,7 @@ with st.sidebar:
     )
 
     process_btn = st.button(
-        "🚀 Process Media",
+        "🚀 Process Audio",
         type="primary",
         use_container_width=True,
         disabled=(source_path is None)
@@ -80,8 +66,8 @@ with st.sidebar:
 
 # --- PIPELINE EXECUTION ---
 if process_btn and source_path:
-    with st.status("Running AI Video Assistant Pipeline...", expanded=True) as status:
-        st.write("📥 Downloading / converting and chunking audio...")
+    with st.status("Running AI Audio Assistant Pipeline...", expanded=True) as status:
+        st.write("📥 Converting and chunking audio...")
         st.write("🗣️ Transcribing / translating speech with Whisper (`base`)...")
         st.write("🧠 Generating title, summary & extracting insights via Gemini...")
         st.write("🗂️ Building Chroma vector store for RAG Q&A...")
@@ -103,15 +89,15 @@ if process_btn and source_path:
 
 # --- MAIN CONTENT AREA ---
 if st.session_state.pipeline_result is None:
-    st.header("Welcome to AI Video & Meeting Assistant")
+    st.header("Welcome to AI Audio Assistant")
     st.markdown(
         """
-        Turn any YouTube video or local meeting recording into structured notes and an interactive knowledge base.
+        Turn any audio recording into structured notes and an interactive knowledge base.
         
         **How to get started:**
-        1. Paste a **YouTube URL** or upload an **Audio/Video file** in the left sidebar.
-        2. Select the spoken language (**English**, **Hindi**, or **Hinglish**).
-        3. Click **🚀 Process Media** to extract summaries, action items, decisions, and chat with the content.
+1. Upload an **Audio file** in the left sidebar.
+2. Select the spoken language (**English**, **Hindi**, or **Hinglish**).
+3. Click **🚀 Process Audio** to extract summaries, action items, decisions, and chat with the content.
         """
     )
 else:
@@ -161,14 +147,12 @@ else:
             )
 
     with col_chat:
-        st.markdown("### 💬 Chat with Video")
-        st.caption("Ask questions grounded strictly in the video transcript.")
+        st.markdown("### 💬 Chat with Audio")
+        st.caption("Ask questions grounded strictly in the audio transcript.")
 
         # Scrollable chat container
         chat_container = st.container(height=430, border=True)
         with chat_container:
-            if not st.session_state.chat_history:
-                st.info("Ask anything about the video or meeting below!")
             for msg in st.session_state.chat_history:
                 with st.chat_message(msg["role"]):
                     st.markdown(msg["content"])
