@@ -1,39 +1,25 @@
-import os
-import shutil
+import uuid
 from langchain_chroma import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
-CHROMA_DIR = "vector_db"
-COLLECTION_NAME = "meeting_transcript"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 
-# Cached at module level so HuggingFaceEmbeddings initializes only once per process
-_embeddings = None
+
+def get_embeddings():
+    return HuggingFaceEmbeddings(
+        model_name=EMBEDDING_MODEL,
+        model_kwargs={"device": "cpu"}
+    )
 
 
-def get_embeddings() -> HuggingFaceEmbeddings:
-    global _embeddings
-    if _embeddings is None:
-        print(f"Loading embedding model ({EMBEDDING_MODEL})...")
-        _embeddings = HuggingFaceEmbeddings(
-            model_name=EMBEDDING_MODEL,
-            model_kwargs={"device": "cpu"},
-        )
-    return _embeddings
-
-
-def build_vector_store(transcript: str, clear_existing: bool = True) -> Chroma:
-    print("Building vector store...")
-
-    # Clear old persisted data so a new video/meeting starts fresh
-    if clear_existing and os.path.exists(CHROMA_DIR):
-        shutil.rmtree(CHROMA_DIR, ignore_errors=True)
+def build_vector_store(transcript: str) -> Chroma:
+    print("Building vector Store")
 
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
-        chunk_overlap=50,
+        chunk_overlap=50
     )
     chunks = splitter.split_text(transcript)
 
@@ -43,28 +29,18 @@ def build_vector_store(transcript: str, clear_existing: bool = True) -> Chroma:
     ]
 
     embeddings = get_embeddings()
+    # In-memory ephemeral store with a unique collection name per run (no readonly SQLite disk issues)
     vector_store = Chroma.from_documents(
         documents=docs,
         embedding=embeddings,
-        collection_name=COLLECTION_NAME,
-        persist_directory=CHROMA_DIR,
+        collection_name=f"transcript_{uuid.uuid4().hex}"
     )
 
-    return vector_store
-
-
-def load_vector_store() -> Chroma:
-    embeddings = get_embeddings()
-    vector_store = Chroma(
-        collection_name=COLLECTION_NAME,
-        embedding_function=embeddings,
-        persist_directory=CHROMA_DIR,
-    )
     return vector_store
 
 
 def get_retriever(vector_store: Chroma, k: int = 4):
     return vector_store.as_retriever(
         search_type="similarity",
-        search_kwargs={"k": k},
+        search_kwargs={"k": k}
     )
